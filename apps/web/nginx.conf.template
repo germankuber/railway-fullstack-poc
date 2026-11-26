@@ -1,11 +1,44 @@
+map $status $log_level {
+    ~^5     error;
+    ~^4     warn;
+    default info;
+}
+
+log_format json_access escape=json
+    '{'
+        '"timestamp":"$time_iso8601",'
+        '"level":"$log_level",'
+        '"message":"HTTP $request_method $uri responded $status in ${request_time}s",'
+        '"service":"web",'
+        '"requestMethod":"$request_method",'
+        '"requestPath":"$uri",'
+        '"query":"$args",'
+        '"statusCode":$status,'
+        '"bytesSent":$body_bytes_sent,'
+        '"elapsedSeconds":$request_time,'
+        '"clientIp":"$http_x_forwarded_for",'
+        '"userAgent":"$http_user_agent",'
+        '"referer":"$http_referer"'
+    '}';
+
 server {
     listen ${PORT};
     listen [::]:${PORT};
     root /usr/share/nginx/html;
     index index.html;
 
-    location /assets/ {
+    access_log /dev/stdout json_access;
+
+    location ^~ /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
+    location ~ \.[a-zA-Z0-9]+$ {
         try_files $uri =404;
     }
 
