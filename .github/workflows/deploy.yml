@@ -27,8 +27,12 @@ jobs:
         include:
           - service: api
             path: apps/api
+            url_variable: API_URL
+            health_path: /health
           - service: web
             path: apps/web
+            url_variable: WEB_URL
+            health_path: /
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
@@ -44,3 +48,7 @@ jobs:
           --service ${{ matrix.service }}
           --ci
           --message "${{ github.sha }}"
+      - name: Wait for deployment to become healthy on Railway
+        run: .github/scripts/wait-for-railway-deployment.sh ${{ matrix.service }} ${{ github.sha }} 600
+      - name: Smoke test public endpoint
+        run: .github/scripts/check-health.sh "${{ vars[matrix.url_variable] }}${{ matrix.health_path }}"
